@@ -11,11 +11,14 @@
  *   > int32_t type  = cast from uint32_t
  *					   cast is safety after checking if uint32_t value less or equal INT32_MAX
  * 
+ * Function is insensitive to sizeof(unsigned long) value
  * Allowed range from -2147483648 to +4294967295 
- * Allowed input formats:
+ * 
+ * Allowed input formats (autodetect):
  *   > dec: 1234, +1234, -1234
- *   > hex: 0xABCD (case insensitive)
- *
+ *   > hex: 0xABCD (case insensitive both for 'x' symbol and value symbols)
+ *   > oct: this format is permitted but might be simply turned oò
+ * 
  * */
 
 int main(int argc, char** argv)
@@ -56,7 +59,7 @@ int main(int argc, char** argv)
 		if (input[0] == '-' && ((value & (1 << 31)) == 0))
 		{
 			printf(" :: error, signed value overflow (sizeof(ul) is 4) \n");
-			return 0;
+			return 1;
 		}
 	}
 	// check flow for sizeof(unsigned long) > 4
@@ -66,18 +69,18 @@ int main(int argc, char** argv)
 		if (input[0] != '-' && strtoul(input, NULL, 0) > UINT32_MAX)
 		{
 			printf(" :: error, unsigned value overflow (sizeof(ul) is 8) \n");
-			return 0;
+			return 1;
 		}
 
 		// check if negative value was given and it fits into potential int32_t
 		if(input[0] == '-' && strtol(input, NULL, 0) < INT32_MIN)
 		{
 			printf(" :: error, signed value overflow (sizeof(ul) is 8) \n");
-			return 0;
+			return 1;
 		}
 	}
 
-	printf(" :: result, hex = 0x%08X, u = %u, s = %d", value, value, value);
+	printf(" :: result, hex = 0x%08X, uns = %u, sig = %d", value, value, value);
 	
 	return 0;
 }

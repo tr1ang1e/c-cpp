@@ -9,11 +9,11 @@
 void print_bits(void* value, size_t bits)
 {
 	/*
-	
+
 		b = 1 byte
 		u = 4 bytes = uint32_t
 
-		STACK, main	
+		STACK, main
 
 		+---+ --+
 		| b |   |
@@ -24,38 +24,38 @@ void print_bits(void* value, size_t bits)
 		+---+   |
 		| b |   |  == &i
 		+---+---+
-		| b |   | 
+		| b |   |
 		+---+   |
 		| b |   |
 		+---+    > uint32_t j = ... ;
 		| b |   |
 		+---+   |
 		| b |   |  == &j
-		+---+ --+  
-          |
-		  V 
+		+---+ --+
+		  |
+		  V
 	 grows down
 
 
-		CAST, function 
+		CAST, function
 		uint64_t var = *(uint64_t*)(&b)
-		
+
 			  +---+---+   +---+---+---+---+---+---+---+---+
 		var = | u | u | = | b | b | b | b | b | b | b | b |
-		      +---+---+   +---+---+---+---+---+---+---+---+
-	                      ^------ i ------^------ j ------^     
-						                   ^ 
-										   mask 1 must be here
-										    
-		so mask to print 'j' bits must be = 1 shifted left for (sizeof(j) - 1) 
+			  +---+---+   +---+---+---+---+---+---+---+---+
+						  ^------ i ------^------ j ------^
+										   ^
+										   mask 10..00 must be here
+
+		so mask to print 'j' bits must be = 1 shifted left for (sizeof(j) - 1)
 		uint64_t mask = (uint64_t)1 << (sizeof(uint32_t) - 1)
 
 	 * */
 
-	// uint64_t is the greatest guaranteed size in standard 
-	uint64_t mask = (uint64_t)1 << (bits - 1);	
+	 // uint64_t is the greatest guaranteed size in standard 
+	uint64_t mask = (uint64_t)1 << (bits - 1);
 	uint64_t numb = *(uint64_t*)value;
-	
+
 	// '+1' to keep null - termanator
 	char* result = calloc(bits + 1, 1);
 	result[bits] = '\0';
@@ -70,7 +70,6 @@ void print_bits(void* value, size_t bits)
 	printf(" :: bits = %s \n", result);
 	free(result);
 }
-
 
 int main(int argc, char** argv)
 {
