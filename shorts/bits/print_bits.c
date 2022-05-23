@@ -52,7 +52,7 @@ void print_bits(void* value, size_t bits)
 
 	 * */
 
-	 // uint64_t is the greatest guaranteed size in standard 
+	// uint64_t is the greatest guaranteed size in standard 
 	uint64_t mask = (uint64_t)1 << (bits - 1);
 	uint64_t numb = *(uint64_t*)value;
 
