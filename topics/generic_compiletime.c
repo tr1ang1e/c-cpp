@@ -9,6 +9,7 @@
  * Attention to:
  *   > syntax (parantheses and commas)
  *   > 'default:' case (use if type was not specifed in _Generic)
+ *      if no default and type was not detected = compile error
  * 
  * Users type:
  *   > might be regognized by _Generic

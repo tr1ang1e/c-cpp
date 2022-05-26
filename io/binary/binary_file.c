@@ -74,9 +74,9 @@ int main(int argc, char** argv)
       break;
     }
 
-    // try to open file here with the text editor     //
-    // it will appears like corrupted but it doesn't  //
-    // reading from it will prove it                  //
+    //    try to open 'data; file here with the text editor     //
+    //    it will appears like corrupted but it doesn't         //
+    //    reading from it will prove it                         //
 
     // to ensure that all data were written to file before reading from it
     result = fflush(file);    

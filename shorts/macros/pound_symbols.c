@@ -1,16 +1,16 @@
 /* When using macros it is possible to:
  * 
- *   # = transform macro argument to string
- *  ## = connect two parts together to have new identificator
+ *   # = stringification = transform macro argument to string
+ *  ## = concatenation = connect two parts together to have new identificator
  * 
  * */
 
 #include <stdio.h>
 
-// transform macro argument to string
+// stringification
 #define TOSTRING(arg) (#arg)
 
-// connect two parts together to have new identificator
+// concatenation
 #define NEWIDENT(arg) _var_##arg
 
 int main(int argc, char** argv)
