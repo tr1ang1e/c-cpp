@@ -15,7 +15,7 @@
  * So implementation-defined points are:
  *   — whether a 'plain' int bit-field (char, short, int, long = which are not explicitely 'signed' or 'unsigned') is actually signed or unsigned 
  *   - allowable bit-field types other than _Bool, signed int, and unsigned int
- *   — whether atomic types are permitted for bit-fields
+ *   — [!] are thread-safe (whether atomic types are permitted for bit-fields)
  *   - whether a bit-field can straddle a storage-unit boundary
  *   - [!] the order of allocation of bit-fields within a unit
  *   — the alignment of non-bit-field members of structures
