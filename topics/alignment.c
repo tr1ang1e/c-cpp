@@ -73,14 +73,15 @@ int main(int argc, char** argv)
 		uint8_t  i;	    
 		uint32_t j;	
 	};
-	printf(" :: __2__ : Alignment, struct padding  >>  sizeof(S) = %llu \n", sizeof(struct S));
+	printf(" :: __2__ : Alignment, structure padding  >>  sizeof(S) = %llu \n", sizeof(struct S));
 
 
-	/* __3__ : Alignment, another rule for structure
+	/* __3__ : Alignment, structure trailing padding
 	 * 
 	 * Another rules for structure alignment is that: 
-	 * >> structure itself must have size, 
-	 *    divisible by size of it's greatest member
+	 *		>> structure itself must have size, divisible by size of it's greatest member
+	 * so even if members order permits to avoid padding between them,
+	 * trailing padding is necessary to meet structure alignment requirements
 	 * 
 	 * sizeof(uint64_t) + sizeof(uint8_t) = 9
 	 * sizeof(struct T) = 16
@@ -126,6 +127,46 @@ int main(int argc, char** argv)
 	size_t offset = (size_t)(&((struct T*)0)->i);
 	printf("    offset of second member is %zu \n", offset);
 
+
+
+	/* __5__ : Nested structures alignment
+	 * 
+	 * Let us say we have two structures: struct Outer and struct Inner
+	 *   - struct Inner alignment depends only on it's members
+	 *   - struct Outer alignment dependd on widest member of both Outer and Inner structures
+	 * 
+	 * 
+	 *    +---------------+---------------+-------------------------------+
+	 *    |               |     Inner     |                               |
+	 *    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+	 *    | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+	 *    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+	 *    |   w   | _pad_ | inner_member  |   x   |   y   | z |   _pad_   |
+	 *    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+	 *                ^                                           ^
+	 *                to align Inner by 4                         to align Outer by 4 despite of 
+	 *                                                            the most wired Outer member is 2
+	 * 
+	 * 
+	 * Result size of struct Outer = 16 (not 14) because of inner_member of struct Inner
+	 * 
+	 * */
+	struct Outer
+	{
+		uint16_t w;
+		
+		struct Inner
+		{
+			uint32_t inner_member;
+		} nested_struct;
+
+		uint16_t x;
+		uint16_t y;
+		uint8_t  z;
+	};
+	printf(" :: __5__ : Nested structures alignment \n");
+	printf("    struct Inner size = %zu \n", sizeof(struct Inner));
+	printf("    struct Outer size = %zu \n", sizeof(struct Outer));
 
 
 	printf("\n");
