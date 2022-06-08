@@ -22,6 +22,9 @@
  * Packing = process of keeping structure with 'as is' size
  * 
  * [!]
+ * Padding bytes are not guaranteed to be zeroes!
+ * 
+ * [!]
  * the presented requirements are commonly used and almost the standard >> the jargon for them is "self-alignment"
  * but be aware of possibility if different approach to the data alignment (especially in embedded systems)
  * 
