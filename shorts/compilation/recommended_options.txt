@@ -1,0 +1,12 @@
+Recommended compiler options:
+    > valid for GCC and Clang
+    > some of them are allowed only while debugging
+
+-D_FORTIFY_SOURCE=2		// define runtime version of _FORTIFY_SOURCE macro (debug)
+-fpie or -fpic			// turn position independent code for executable or shared
+-O2					// optimization of performance and memory usage
+-g3					// generate debugging information (debug)
+-Wall					// turn on recommended warnings
+-Werror				// all warnings become errors
+-sdt=c11				// specify language standard
+-pedantic				// warnings about strong observing of language standard
