@@ -8,13 +8,15 @@
  * +--------+--------+--------+--------+--------+--------+--------+--------+
  * |                unit               |                unit               |
  * +--------+--------+--------+--------+--------+--------+--------+--------+
- * |.....|.|....|....|....|.......|........|....|....|...........|.|...|...|   >>  bit fields (or padding bits)
+ * |.....|.|....|....|....|.......|........|....|....|...........|.|...|...|   >>  bit fields and padding bits (if required)
  * +--------+--------+--------+--------+--------+--------+--------+--------+
  * 
  * */
  
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <malloc.h>
 
 
 /* __1__ : Known
@@ -53,7 +55,7 @@ struct bits
  *	
  * A. implementation-defined
  *     - type      >>  is allowable to be other type then specified in __1__
- *		- sign      >>  sign of plain 'int' bit-field (plain = not explicitly 'signed' or 'unsigned')
+ *	   - sign      >>  sign of plain 'int' bit-field (plain = not explicitly 'signed' or 'unsigned')
  *     - atomic    >>  whether bit filed is allowd to be atomic
  *     - pack      >>  bit fields permitted (but not necessarily) to be packed together
  *     - order     >>  order of bit fields within an allocation unit
@@ -61,36 +63,89 @@ struct bits
  * 
  * B. unspecified  >>  alignment of the allocation unit that holds a bit field
  * C. undefined    >>  the effect of calling offsetof() on a bit field
- * 
- * 
  *  
- * Standart doesn't define "alignment of the addressable storage unit allocated to hold a bit-field"
- * So implementation-defined points are:
- *   - [!] the order of allocation of bit-fields within a unit
- *   — [!] are thread-safe (whether atomic types are permitted for bit-fields) 
- *   - whether a bit-field can straddle a storage-unit boundary
- *   — the alignment of non-bit-field members of structures
- * "This should present no problem unless binary data written by one implementation is read by another."
- * 
  * */
 
 
 /* __3__ : Usage with union
  *
+ * Union usage with fields is convinient in purpose of setting values 
+ * not separately for every of bit fields but with one command per union
  * 
- * 
- * 
+ * [!]
+ * As it already have been mentioned, there are a lot of implementation
+ * defined or unspecified points about bitfields. So the following example
+ * just demonstrates the (union + bit fields) implementation for comliper
+ * that was used for writing this article and might be not valid
+ * for different compiler. General rules about it are:
+ *    - use bit fields across different compilers only in specified ways
+ *    - within one project know compiler rules before using bit fileds in non-specified ways 
  * 
  */
 
+// utility
+#define PVOID(arg) ((void*)&arg)    
+#define BITS(type) (sizeof(type) * 8)
+static void print_bits(void* value, size_t bits);
+
 struct S
 {
+	union
+	{
+		uint16_t var;
+		struct
+		{
+			uint16_t i : 11;
+			uint16_t j : 5;
+		};
 
+	};
 };
 
 int main(int argc, char** argv)
 {
+	struct S s = { 0 };
+	s.var = 0x0801;
 
+	// result
+	printf("\n");
+	printf(" :: __3__ : Usage with union \n");
+	printf("    sizeof(struct S) = %zu \n", sizeof(struct S));
+	printf("    s.var = 0x%04X \n", s.var);
+	printf("    s.i = 0x%x \n", s.i);
+	printf("    s.j = 0x%x \n", s.j);
+
+	// visualization
+	printf("\n");
+	uint8_t high_byte = *(((uint8_t*)&s.var) + 1);
+	uint8_t low_byte = *(uint8_t*)&s.var;
+	printf("            +- %02X -++- %02X -+ \n", high_byte, low_byte);
+	printf("            |      ||      | \n");
+	print_bits(PVOID(s.var), BITS(uint16_t));
+	printf("            |   ||         | \n");
+	printf("            + j ++--- i ---+ \n");
+	printf("\n");
 
 	return 0;
+}
+
+void print_bits(void* value, size_t bits)
+{
+	 // uint64_t is the greatest guaranteed size in standard 
+	uint64_t mask = (uint64_t)1 << (bits - 1);
+	uint64_t numb = *(uint64_t*)value;
+
+	// '+1' to keep null - termanator
+	char* result = calloc(bits + 1, 1);
+	result[bits] = '\0';
+
+	for (size_t i = 0; i < bits; ++i)
+	{
+		bool b = mask & numb;
+		result[i] = (b ? '1' : '0');
+		numb = numb << 1;
+	}
+
+	printf("    s.var = %s \n", result);
+	free(result);
 }
