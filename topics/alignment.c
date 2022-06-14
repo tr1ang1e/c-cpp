@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 	printf("    b = %p \n", &b);
 	printf("    c = %p \n", &c);
 	printf("    d = %p \n", &d);
-
+	printf("\n");
 
 	/* __2__ : Alignment, structure padding
 	 *
@@ -102,6 +102,7 @@ int main(int argc, char** argv)
 		uint8_t  i;
 	};
 	printf(" :: __3__ : Alignment, another rule for structure  >>  sizeof(T) = %llu \n", sizeof(struct T));
+	printf("\n");
 
 
 	/* __4__ : Structure instance address
@@ -127,8 +128,10 @@ int main(int argc, char** argv)
 	printf("    first member address  =  %p \n", &instance.j);
 
 	// get offset of structure's member (e.g. offsetof(...) macro in <stddef.h>)
-	size_t offset = (size_t)(&((struct T*)0)->i);
+	#define OFFSET(T, member) (size_t)(&((struct T*)0)->member)	
+	size_t offset = OFFSET(T, i);
 	printf("    offset of second member is %zu \n", offset);
+	printf("\n");
 
 
 
@@ -170,8 +173,64 @@ int main(int argc, char** argv)
 	printf(" :: __5__ : Nested structures alignment \n");
 	printf("    struct Inner size = %zu \n", sizeof(struct Inner));
 	printf("    struct Outer size = %zu \n", sizeof(struct Outer));
-
-
 	printf("\n");
+
+	/* __6__ : Warning about enum type
+	 *
+	 * */
+
+
+	/* __7__ : Packing techniques: using #pragma pack
+	 * 
+	 * The most derict technique to avoid paddings is to use #pragma compiler directives:
+	 *   > using for structures and unions
+	 *   > valid for GCC and clang compilers (need to clarify about defferent)
+	 * 
+	 * First variant  =  #pragma pack( [n] )	
+	 *	 > use alone for apply 'n' from now to the end 
+	 *   > without 'n' default value will be applied
+	 *   > 'n' means number for alignment rule (1, 2, 4, 8, 16 are available)
+	 * 
+	 * Second variant  =  #pragma pack( push [, id] [, n] )
+	 *	                  #pragma pack( pop [, { id | n }] )
+	 * 
+	 *	 - 'push' = push to compiler stack, 'pop' = pop from compiler stack
+	 *   -  'id' = possibility to coordinate 'push' and 'pop' to have random (not like stack) access
+	 *   - 'pop, n' is the same as 'pop' + 'push, n' (replace current 'n' value)
+	 * 
+	 * 
+	 * [!]
+	 * This technique forces the generation of more expensive and slower code
+	 * The only reason for #pragma pack is compatibility with to some kind of bit-level hardware or protocol requirement
+	 * 
+	 * */
+
+	struct Nonpacked
+	{
+		uint8_t  a;
+		uint32_t b;
+		uint8_t  c;
+	};
+
+	#pragma pack(push, 1)
+	struct Packed
+	{
+		uint8_t  a;
+		uint32_t b;
+		uint8_t  c;
+	};
+	#pragma pack(pop)
+
+	printf(" :: __7__ : Packing techniques: using #pragma pack \n");
+	printf("    struct Nonpacked size = %zu \n", sizeof(struct Nonpacked));
+	printf("    struct Packed size = %zu \n", sizeof(struct Packed));
+	printf("\n");
+
+
+	/* __8__ : Packing techniques: reordering structure
+	 *
+	 * */
+
+
 	return 0;
 }
