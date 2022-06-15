@@ -175,14 +175,21 @@ int main(int argc, char** argv)
 	printf("    struct Outer size = %zu \n", sizeof(struct Outer));
 	printf("\n");
 
-	/* __6__ : Warning about enum type
+
+	/* __6__ : Warning about types sizes
 	 *
+	 * C standard:
+	 *   - provides only minimal sizes of int types (exept types in <stdint.h>)
+	 *   - provides only minimal sizes of float types
+	 *   - doesn't provide exactly size of enum type
+	 * so padding in structures using these types might vary from realization to realization
+	 * 
 	 * */
 
 
 	/* __7__ : Packing techniques: using #pragma pack
 	 * 
-	 * The most derict technique to avoid paddings is to use #pragma compiler directives:
+	 * The most direct technique to avoid paddings is to use #pragma compiler directives:
 	 *   > using for structures and unions
 	 *   > valid for GCC and clang compilers (need to clarify about defferent)
 	 * 
@@ -229,7 +236,49 @@ int main(int argc, char** argv)
 
 	/* __8__ : Packing techniques: reordering structure
 	 *
+	 * Another simple way is to place structure members in :
+	 *   - decreasing order  >>  no padding bytes between members (possible trailing padding)
+	 *   - increasing order  >>  no trailing padding (possible padding bytes between members)
+	 * 
+	 * [!] Be aware of code readability
+	 * 
+	 * [!] Be aware of cache locality. Comment:
+	 * When CPU deal with data in memory it puts them firstly into cache lines (storage of 32 or 64 bytes size) 
+	 * for reasons of perfomance increasing. The nearer data required in one particular context, the performance 
+	 * is high - because of RAM access number reducing. That's why structure packing must be carefully: grouping 
+	 * related and co-accessed data in adjacent fields. Moreover, sometimes the better performance might
+	 * be achieved by transforming array of structures to structure of arrays.
+	 * 
 	 * */
+
+	struct Nonreordered
+	{
+		char a;
+		long long b;
+		char c;
+		int d;
+		char e;
+	};
+
+	struct Decreasing  
+	{
+		long long a;
+		int b;
+		char c, d, e;
+	};
+
+	struct Increasing
+	{
+		char a, b, c;
+		int d;
+		long long e;
+	};
+
+	printf(" :: __8__ : Packing techniques: reordering structure \n");
+	printf("    struct Nonreodered size = %zu \n", sizeof(struct Nonreordered));
+	printf("    struct Decreasing size = %zu \n", sizeof(struct Decreasing));
+	printf("    struct Increasing size = %zu \n", sizeof(struct Increasing));
+	printf("\n");
 
 
 	return 0;
