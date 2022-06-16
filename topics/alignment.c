@@ -11,11 +11,6 @@
  *      4-byte types  >>  must start on address divisible by 4		
  *      8-byte types  >>  must start on address divisible by 8
  * Sign'ess doesn't affect alignment
- *
- * For structures (not for stack) it's possible to avoid padding by using 
- * #pragma pack(push, N)	// N = number, which address must be divisible
- *	 struct S { ... };
- * #pragma pack(pop)
  * 
  * [!] terms
  * Padding = process of adding empty bytes to meet alignment requirements 
