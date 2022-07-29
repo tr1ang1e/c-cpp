@@ -58,4 +58,32 @@ int main(int args, char** argv)
 	printf("    llong = %zu \n", sizeof(long long) * CHAR_BIT);
 	printf("  \n");
 
+
+	/* __2__ : integer conversions ranks
+	 *
+	 * Conversion rank determines how conversions are performed. Different
+	 * integer types might have the same representation, but not coversion ranks.
+	 *
+	 * Following rules describe how do types convert in both:
+	 *	  - implicit = when non-compatible types are operands of an arithmetic operator
+	 *   - explicit = cast from type to another
+	 *
+	 * [!]
+	 * Conversion of an operand value to a compatible type causes
+	 *   - no change to the  >>  value
+	 *   - no change to the  >>  representation
+	 *
+	 * Rules, see C__N1570__6.3.1.1:
+	 *
+	 *         _Bool << char << short << (int, enum) << long << long long
+	 *
+	 * - sign T and unsign T have the same rank
+	 * - char and (un)signed char have the same rank
+	 *
+	 * */
+
+	printf(" :: __2__ : integer conversion ranks \n");
+	printf("    _Bool << char << short << (int, enum) << long << long long \n");
+	printf("  \n");
+
 }
