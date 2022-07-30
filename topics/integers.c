@@ -86,4 +86,48 @@ int main(int args, char** argv)
 	printf("    _Bool << char << short << (int, enum) << long << long long \n");
 	printf("  \n");
 
+
+	/* __3__ : integer promotion
+	 *
+	 * For the following categories:
+	 *   - int types with conversion rank less_than or equal_to (un)signed int
+	 *   - bit-field of type _Bool or (un)signed int
+	 * there is the rule:
+	 *
+	 * In every expression when (un)signed int might be used,
+	 * these types are implicitly converted to:
+	 *   >   signed int  >>  if signed int can represent all values of the original type
+	 *   > unsigned int  >>	 otherwise
+	 *
+	 * See exaples of this rule consequences (sometimes they are not intuitive)
+	 *
+	 * [!]
+	 * Exception! Operators like ++ oe sizeof() don't lead to integer promotion,
+	 * cause there is no sence to deal with any types in such a way
+	 *
+	 * [!]
+	 * Integer constant is also considered as of int type, e.g:
+	 * long long var = 1; is the same as { int i = 1; long long var = (long long)i; }
+	 *
+	 * */
+
+	printf(" :: __3__ : integer promotion \n");
+
+	// example 1 : bitwise operations
+	unsigned char a = 1;
+	unsigned char b = ~a >> 1;		// intuitive: ~00000001 >> 1 = 11111110 >> 1 = 01111111 = 0x7F or 127
+	// actual ('a' integer promotion to int): ~00..00000001 >> 1 = 11..11111110 >> 1 = 01..11111111 = 255 
+	printf("    example 1, bitwise operations. Expected = %d. Actual = %hhu\n", 0x7F, b);
+
+	// example 2 : char comparison
+	signed char i = 0xFC;			// signed   11111011 promoted to int = 11..11111011 (sign extension so value is saved)  
+	unsigned char j = 0xFC;			// unsigned 11111011 promoted to int = 00..11111011 (do nothing just fill bits witn 0)
+	const char* isEqual = (i == j) ? "equal" : "not equal";
+	printf("    example 2, char comparison. Chars: i is '%c', j is '%c'. They are [ %s ] \n", i, j, isEqual);
+
+	// example 3 : exception
+	j = 255;  // if integer promotion was applied the ++j result value would be 256
+	printf("    example 3, exception. Original value is 255. ++255 will behave as expected = %d \n", ++j);
+	printf("  \n");
+
 }
