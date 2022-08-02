@@ -59,6 +59,7 @@ int main(int args, char** argv)
 	printf("  \n");
 
 
+
 	/* __2__ : integer conversions ranks
 	 *
 	 * Conversion rank determines how conversions are performed. Different
@@ -85,6 +86,7 @@ int main(int args, char** argv)
 	printf(" :: __2__ : integer conversion ranks \n");
 	printf("    _Bool << char << short << (int, enum) << long << long long \n");
 	printf("  \n");
+
 
 
 	/* __3__ : integer promotion
@@ -129,5 +131,55 @@ int main(int args, char** argv)
 	j = 255;  // if integer promotion was applied the ++j result value would be 256
 	printf("    example 3, exception. Original value is 255. ++255 will behave as expected = %d \n", ++j);
 	printf("  \n");
+
+
+
+	/* __4__ : usual arithmetic conversions
+	 *
+	 * Topic relevant types overview, C__N1570__6.2.5:
+	 *
+	 *     +-------------------------------------------------------------------------------------------------------------------+
+	 *     |                                                 aritmetic types                                                   |
+	 *     +---------------------------------------------------------+---------------------------------------------------------+
+	 *     |                      integer types                      |                     floating types                      |
+	 *     +----------------------------+----------------------------+----------------------------+----------------------------+
+	 *     |    basic integer types     |   extended integer types   |    real floating types     |   complex floating types   |
+	 *     +----------------------------+----------------------------+----------------------------+----------------------------+
+	 *     ^                                                                                      ^                            ^
+	 *     + -- -- -- -- -- -- -- -- -- -- --  real type domain  -- -- -- -- -- -- -- -- -- -- -- + --  complex type domain -- +
+	 *
+	 *   > basic integer types			=  standart signed integer types + standart unsigned integer types
+	 *   > extended integer types	    =  additional implementation-defined (signed + unsigned) integer types
+	 *   > real floating types			=  float, double, long double
+	 *   > complex floating types		=  float _Compex, double _Complex, long double _Complex
+	 *
+	 *
+	 *
+	 * General purpose of usual arithmetic conversions is to determine common-real-type
+	 * for operands of given arithmetic operator and therefore of the final result. In this
+	 * document the information will be only about aritmetic expressions of ...
+	 *   ... integer types subset of ...
+	 *   ... real type domain
+	 *
+	 * Conversions are done in 2 steps, C__N1570__6.3.1.8:
+	 *   1 = integer promotion if necessary
+	 *   2 = conversions according to the rules in the following order :
+	 *		 a. if types are same - no conversions
+	 *       b. otherwice, if both operands are signed or unsigned - to type with higher conversion rank
+	 *       c. otherwise, if unsigned operand has greater than or equal to rank of signed operand - to unsigned operand type
+	 *       d. otherwise, if signed operand can represent all of unsigned operands possible values - to sidned operand type
+	 *       e. otherwise, - to unsigned type corresponding to the type of signed operand
+	 *
+	 * */
+
+	printf(" :: __4__ : usual arithmetic conversions \n");
+	printf("    a. signed int + signed int               >>  signed int     \n");
+	printf("    b. signed int + signed long              >>  signed long    \n");
+	printf("    c. signed int + unsigned long            >>  unsigned long  \n");
+	printf("    d. signed long (64) + unsigned int (32)  >>  signed long    \n");
+	printf("    e. signed long (32) + unsigned int (32)  >>  unsigned long  \n");
+	printf("  \n");
+
+	return 0;
 
 }
