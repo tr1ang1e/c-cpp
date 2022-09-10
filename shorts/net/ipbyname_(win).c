@@ -15,16 +15,23 @@
 #pragma comment(lib, "ws2_32.lib")    // required for 'WSAStartup()' workig
 
 
-const char* get_ip(const char* asciiName);
-void print_socket_error_message(const char* usrDescription, int errCode);
+static const char* get_ip(const char* asciiName);
+static void print_socket_error_message(const char* usrDescription, int errCode);
+static bool is_ip_address(const char* string);
 
 
 int main()
 {
 	const char* host_name = "www.google.com";
-
-	const char* ip = get_ip(host_name);
-	printf("IP is: %s \n", ip ? ip : "FAILURE");
+	if (is_ip_address(host_name))
+	{
+		printf("IP is: %s \n", host_name);
+	}
+	else
+	{
+		const char* ip = get_ip(host_name);
+		printf("IP is: %s \n", ip ? ip : "FAILURE");
+	}
 
 	return 0;
 }
@@ -113,4 +120,19 @@ void print_socket_error_message(const char* usrDescription, int errCode)
 						);
 
 	printf("%s failed with code: %d. %s \n", usrDescription, errCode, errMessage); 
+}
+
+
+bool is_ip_address(const char* string)
+{
+	struct in_addr result = { 0 };
+	int errCode = inet_pton(AF_INET, string, &result);
+
+	if (errCode == -1)
+	{
+		errCode = WSAGetLastError();
+		print_socket_error_message("inet_pton()", errCode);
+	}
+	
+	return (errCode > 0) ? true : false;
 }
