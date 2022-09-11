@@ -1,21 +1,27 @@
 #define WIN32_LEAN_AND_MEAN
 
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#pragma comment(lib, "ws2_32.lib") // required for 'WSAStartup()' workig
+	#define GET_SOCK_ERROR() WSAGetLastError()
+	#define ERR_BUFF_SIZE	(128)
+#else
+	#include <sys/types.h>
+	#include <sys/socket.h>
+	#include <arpa/inet.h>
+	#include <netdb.h>
+	#define GET_SOCK_ERROR() (errno)
+#endif
 
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-
-#define ERR_BUFF_SIZE (128)
 #define IP_ADDR_SIZE (20)
 
 
-#pragma comment(lib, "ws2_32.lib")    // required for 'WSAStartup()' workig
-
-
-static const char* get_ip(const char* asciiName);
+static char* get_ip(const char* asciiName);
 static void print_socket_error_message(const char* usrDescription, int errCode);
 static bool is_ip_address(const char* string);
 
@@ -29,34 +35,47 @@ int main()
 	}
 	else
 	{
-		const char* ip = get_ip(host_name);
+		char* ip = get_ip(host_name);
 		printf("IP is: %s \n", ip ? ip : "FAILURE");
+
+		if (ip != NULL)
+		{
+			free(ip);
+		}
 	}
 
 	return 0;
 }
 
 
-const char* get_ip(const char* asciiName)
+char* get_ip(const char* asciiName)
 {
-	const char* result = NULL;
+	char* result = NULL;
 	struct addrinfo* hostInfo = { 0 };
-	bool isWsaStarted = false;
 	bool isInfoGot = false;
 	int errCode = 0;
 
+#ifdef _WIN32
+	bool isWsaStarted = false;
+#endif
+
 	do
 	{
+
+#ifdef _WIN32
+
 		// required for 'getaddrinfo()' working
 		WSADATA wsaData;
 		errCode = WSAStartup(MAKEWORD(2, 2), &wsaData);    // actual win socket version is 2 (see '#pragma comment()' library version)
 		if (errCode != 0)
 		{
-			errCode = WSAGetLastError();
+			errCode = GET_SOCK_ERROR();
 			print_socket_error_message("WSAStartup()", errCode);
 			break;
 		}
 		isWsaStarted = true;
+
+#endif
 		
 		// not necessary
 		struct addrinfo hints = { 0 };
@@ -67,8 +86,14 @@ const char* get_ip(const char* asciiName)
 		errCode = getaddrinfo(asciiName, NULL, &hints, &hostInfo);
 		if (errCode != 0)
 		{
-			errCode = WSAGetLastError();
+
+#ifdef _WIN32
+			errCode = GET_SOCK_ERROR();
 			print_socket_error_message("getaddrinfo()", errCode);
+#else
+			WARN("getaddrinfo() failed with code %d. %s", errCode, gai_strerror(errCode));
+#endif 
+
 			break;
 		}
 		isInfoGot = true;
@@ -76,15 +101,17 @@ const char* get_ip(const char* asciiName)
 		// retrieve ip from info was got 
 		char* ip = (char*)calloc(IP_ADDR_SIZE, sizeof(char));    // have to free allocated memory in caller
 		struct sockaddr_in* sockaddr_ipv4 = (struct sockaddr_in*)hostInfo->ai_addr;
-		result = inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, ip, IP_ADDR_SIZE);
+		result = (char*)inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, ip, IP_ADDR_SIZE);
 		if (!result)
 		{
-			errCode = WSAGetLastError();
+			errCode = GET_SOCK_ERROR();
 			print_socket_error_message("inet_ntop()", errCode);
 			free(ip);
 		}
 
 	} while (0);
+
+#ifdef _WIN32
 
 	if (isWsaStarted)
 	{
@@ -95,6 +122,8 @@ const char* get_ip(const char* asciiName)
 			print_socket_error_message("Warning! WSACleanup", errCode);
 		}
 	}
+
+#endif
 
 	if (isInfoGot)
 	{
@@ -107,8 +136,9 @@ const char* get_ip(const char* asciiName)
 
 void print_socket_error_message(const char* usrDescription, int errCode)
 {
+#ifdef _WIN32
+
 	char errMessage[ERR_BUFF_SIZE] = { 0 };
-	
 	DWORD isFormated = FormatMessage(
 							FORMAT_MESSAGE_FROM_SYSTEM, 
 							NULL, 
@@ -118,6 +148,12 @@ void print_socket_error_message(const char* usrDescription, int errCode)
 							ERR_BUFF_SIZE, 
 							NULL
 						);
+
+#else
+
+	char* errMessage = strerror(errCode);
+
+#endif
 
 	printf("%s failed with code: %d. %s \n", usrDescription, errCode, errMessage); 
 }
@@ -130,7 +166,7 @@ bool is_ip_address(const char* string)
 
 	if (errCode == -1)
 	{
-		errCode = WSAGetLastError();
+		errCode = GET_SOCK_ERROR();
 		print_socket_error_message("inet_pton()", errCode);
 	}
 	
