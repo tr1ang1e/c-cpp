@@ -1,4 +1,4 @@
-// uint32_t var = strtoul("111", NULL, 0);
+// type conversions = https://www.oreilly.com/library/view/c-in-a/0596006977/ch04.html (C in a Nutshell by Peter Prinz, Tony Crawford, ch. 4)
 
 signed char s = -1;
 unsigned char u = 1;
