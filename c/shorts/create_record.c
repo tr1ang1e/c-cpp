@@ -8,21 +8,6 @@
 #include <stdarg.h>
 
 
-// https://en.wikipedia.org/wiki/ANSI_escape_code
-#define __ESC "\033"
-#define __TERMINAL_DEFAULT __ESC "[m"
-#define __RECORD_BUFSIZE (128)
-#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-
-static bool get_timestamp(char* buffer, size_t size, size_t* offset);
-static void __log(Severity severity, const char* filename, int line, const char* format, ...);
-
-#define __lTrace(...)   __log(SEV_TRACE   , __FILENAME__, __LINE__,      NULL  )
-#define __lDebug(...)   __log(SEV_DEBUG   , __FILENAME__, __LINE__, __VA_ARGS__)
-#define __lInfo(...)    __log(SEV_INFO    , __FILENAME__, __LINE__, __VA_ARGS__)
-#define __lWarn(...)    __log(SEV_WARNING , __FILENAME__, __LINE__, __VA_ARGS__)
-#define __lError(...)   __log(SEV_ERROR   , __FILENAME__, __LINE__, __VA_ARGS__)
-
 typedef enum Severity
 {
     SEV_NONE = -1,
@@ -33,6 +18,22 @@ typedef enum Severity
     SEV_ERROR,
     SEV_MAX = SEV_ERROR
 } Severity;
+
+
+// https://en.wikipedia.org/wiki/ANSI_escape_code
+#define __ESC "\033"
+#define __TERMINAL_DEFAULT __ESC "[m"
+#define __RECORD_BUFSIZE (128)
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+static bool __get_timestamp(char* buffer, size_t size, size_t* offset);
+static void __log(Severity severity, const char* filename, int line, const char* format, ...);
+
+#define __lTrace(...)   __log(SEV_TRACE   , __FILENAME__, __LINE__,      NULL  )
+#define __lDebug(...)   __log(SEV_DEBUG   , __FILENAME__, __LINE__, __VA_ARGS__)
+#define __lInfo(...)    __log(SEV_INFO    , __FILENAME__, __LINE__, __VA_ARGS__)
+#define __lWarn(...)    __log(SEV_WARNING , __FILENAME__, __LINE__, __VA_ARGS__)
+#define __lError(...)   __log(SEV_ERROR   , __FILENAME__, __LINE__, __VA_ARGS__)
 
 const char* __severityNames[] =
 {
@@ -63,7 +64,7 @@ int main()
     return 0;
 }
 
-bool get_timestamp(char* buffer, size_t size, size_t* offset)
+bool __get_timestamp(char* buffer, size_t size, size_t* offset)
 {
     bool success = false;
     
@@ -119,7 +120,7 @@ void __log(Severity severity, const char* filename, int line, const char* format
     do
     {
         // timestamp
-        bool gotTimestamp = get_timestamp(record, __RECORD_BUFSIZE, &offset);
+        bool gotTimestamp = __get_timestamp(record, __RECORD_BUFSIZE, &offset);
         if (!gotTimestamp)
             break;
 
