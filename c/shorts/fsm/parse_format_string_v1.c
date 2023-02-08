@@ -1,3 +1,7 @@
+// format pattern: "${<alignment>:<color>:placeholder}"
+// linux compatibility only
+
+
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
