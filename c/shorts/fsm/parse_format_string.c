@@ -1,6 +1,6 @@
-// format pattern: "${<alignment>:<color>:placeholder}"
-// linux compatibility only
-
+// input string format:  %<alignment>:<color>:<unit>{<extendedOption>}
+//      note 1. <alignment>, <color> and <extendedOption >might be skipped
+//      note 2. drefault values would be applied instead
 
 #include <stdio.h>
 #include <string.h>
@@ -9,11 +9,21 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <time.h>
-#include <unistd.h>
 #include <stdarg.h>
-#include <pthread.h>
+
+#ifdef __linux__
+    #include <unistd.h>
+    #include <pthread.h>
+    #include <errno.h>
+#elif defined(_WIN32)
+    #include <Windows.h>
+    #include <io.h>
+    #define write _write
+    #define fileno _fileno
+#endif
 
 
+///////////////////////////////////////////////////////////////////////////
 
 // #define _lDEBUG
 #ifdef _lDEBUG
@@ -28,6 +38,17 @@
     #define _C(symbol)
     #define _RESULT 
 #endif
+
+// TODO:
+//      struct handlers for stdout and file
+//      possibility to change format in process (roll and reopen)
+//      windows 
+//          time
+//          thread
+
+
+
+///////////////////////////////////////////////////////////////////////////
 
 
 /************************************************************************
@@ -52,6 +73,8 @@
 #define FMT_EXT_OPT_FIRST_STR   "{"     // nust be align with FMT_EXT_OPT_FIRST
 #define FMT_ALIGN_DEFAULT       (0)
 #define FMT_MS_SYMBOL           'f'
+#define FMT_UNIT_MAX_SEPARS     (2)
+#define FMT_UNIT_SEPAR          ':'
 
 // format break helpers
 #define FMT_ERROR_IF_FALSE(statement)           \
@@ -122,14 +145,15 @@ const char* fmtUnitMnemonics[FMT_UNIT_MAX_E] =
     [FMT_THREAD_E]    = "thread"    ,
     [FMT_SEVERITY_E]  = "severity"  ,
     [FMT_TIMESTAMP_E] = "timestamp" ,
-    [FMT_ENDLINE_E]   = "endl"      , 
     [FMT_MESSAGE_E]   = "message"   ,
+    [FMT_ENDLINE_E]   = "endl"      , 
 };
 
 typedef struct FmtUnitNodeS
 {
     FmtUnitsEnum unit;
     long alignment;
+    const char* color;
     char extOption[FMT_BUFF_SIZE];
     char gap[FMT_BUFF_SIZE];
     struct FmtUnitNodeS* next;
@@ -154,6 +178,7 @@ typedef struct FmtParserS
 
     FmtUnitsEnum unit;
     long align;
+    const char* color;
     char extOption[FMT_BUFF_SIZE];
 } FmtParser;
 
@@ -208,7 +233,7 @@ static size_t log_record_format(LogOutputIdEnum output, char* buffer, size_t buf
 static void log_record_write(LogOutputIdEnum output, const char* record, size_t recordLen);
 
 // node list funtions
-static bool get_timestamp(const char* format, char* buffer, size_t bufSize, size_t* written);
+static bool get_timestamp(char* format, char* buffer, size_t bufSize, size_t* written);
 static void fmt_push_single_node(FmtUnitNode* node, LogOutputIdEnum output);
 static bool fmt_push_nodes(void* arg);
 
@@ -261,6 +286,7 @@ bool logging_set_format(LogOutputIdEnum output, const char* format)
             .accumulateIndex = 0,
             .unit = FMT_UNIT_MAX_E,
             .align = 0,
+            .color = NULL,
             .extOption = { 0 }
         };
         
@@ -332,8 +358,10 @@ size_t log_record_format(LogOutputIdEnum output, char* buffer, size_t buffSize, 
         int result = 0;
         
         // create format string
-        char unitFmt[8] = { 0 };
-        result = snprintf(unitFmt, sizeof(unitFmt), "%c%li%c", '%', fmtNode->alignment, 's');
+        char unitFmt[32] = { 0 };
+        const char* color = fmtNode->color ? fmtNode->color : "";
+        const char* reset = fmtNode->color ? "\033[m" : "";
+        result = snprintf(unitFmt, sizeof(unitFmt), "%s%c%li%c%s", color, '%', fmtNode->alignment, 's', reset);
         if (result == -1)
             continue;
 
@@ -374,8 +402,13 @@ size_t log_record_format(LogOutputIdEnum output, char* buffer, size_t buffSize, 
             case FMT_THREAD_E:
             {
                 _S("FMT_THREAD_E");
-                
+
+            #ifdef __linux__
                 pthread_t thread = pthread_self();
+            #elif defined(_WIN32)
+                DWORD thread = GetCurrentThreadId();
+            #endif
+            
                 char threadString[11] = { 0 };
                 (void) snprintf(threadString, sizeof(threadString), "0x%08lx", thread);
                 result = snprintf(bufPosition, sizeAvailable, unitFmt, threadString);
@@ -460,7 +493,7 @@ void log_record_write(LogOutputIdEnum output, const char* record, size_t recordL
         case LOG_OUTPUT_ID_FILE_E:
         {
             // debug
-            // printf("... Writing to the FILE ...");
+            printf("... Writing to the FILE ...");
         }
         break;
 
@@ -472,30 +505,41 @@ void log_record_write(LogOutputIdEnum output, const char* record, size_t recordL
     }
 }
 
-bool get_timestamp(const char* format, char* buffer, size_t bufSize, size_t* written)
+bool get_timestamp(char* format, char* buffer, size_t bufSize, size_t* written)
 {
     bool result = false;
 
     do
     {
+    #ifdef __linux__
         struct timespec tms;
         clock_gettime(CLOCK_REALTIME, &tms);
-        
-        time_t rawTime = tms.tv_sec;
+        uint64_t rawTime = (uint64_t)tms.tv_sec;
         uint64_t msPart = ((uint64_t)tms.tv_nsec) / 1000000;
-        struct tm* timeStruct = localtime(&rawTime);
+    #elif defined (_WIN32)
+        struct _timeb timebuffer;
+        _ftime(&timebuffer);
+        uint64_t rawTime = (uint64_t)timebuffer.time;
+        uint64_t msPart = timebuffer.millitm;
+    #endif
 
-        // define if ms part required or not
+        // determine whether ms part should be processed
         bool msRequired = false;
-        if (strlen(format) >= 2)
+        size_t lastIndex = strlen(format);
+        if (lastIndex >= 2)
         {
-            size_t lastIndex = strlen(format);
             if ((format[lastIndex - 2] == FMT_UNIT_FIRST) && (format[lastIndex - 1] == FMT_MS_SYMBOL))
             {
                 msRequired = true;
+
+                // remove %f so that strftime() may process
+                format[lastIndex - 2] = 0;
+                format[lastIndex - 1] = 0;
             }
         }
 
+        // write main part
+        struct tm* timeStruct = localtime(&rawTime);
         size_t writtenMain = strftime(buffer, bufSize, format, timeStruct);
         if (writtenMain <= 0)
         {
@@ -503,11 +547,15 @@ bool get_timestamp(const char* format, char* buffer, size_t bufSize, size_t* wri
             break;
         }
 
+        // write ms
         int writtenMs = 0;
         if (msRequired)
         {
-            writtenMain -= 2; // 2 is '%f' for ms
-            char* dest = buffer + writtenMain;  
+            // restore %f
+            format[lastIndex - 2] = '%';
+            format[lastIndex - 1] = 'f';
+            
+            char* dest = buffer + writtenMain;
             size_t size = bufSize - writtenMain;
 
             writtenMs = snprintf(dest, size, "%03u", (unsigned int)msPart);
@@ -556,6 +604,7 @@ bool fmt_push_nodes(void* arg)
     int output = parser->output;
     FmtUnitsEnum unit = parser->unit;
     long align = parser->align;
+    const char* color = parser->color;
     char* extOption = parser->extOption;
     char* gap = parser->accumulateBuff;
     size_t gapLen = strlen(gap);
@@ -595,6 +644,7 @@ bool fmt_push_nodes(void* arg)
 
             unitNode->unit = unit;
             unitNode->alignment = align;
+            unitNode->color = color;
             memcpy(unitNode->extOption, extOption, strlen(extOption));
         }
         
@@ -644,9 +694,13 @@ bool fmt_verify_timestamp_option(const char* format)
     
     if (strlen(format) != 0)
     {
-        char buffer[FMT_UNIT_FIRST] = { 0 };
+        // format string must be modifiable
+        char inBuffer[FMT_BUFF_SIZE] = { 0 };
+        memcpy(inBuffer, format, strlen(format));
+        
+        char outBuffer[FMT_BUFF_SIZE] = { 0 };
         size_t written = 0;
-        result = get_timestamp(format, buffer, sizeof(buffer), &written);
+        result = get_timestamp(inBuffer, outBuffer, sizeof(outBuffer), &written);
     }
 
     // debug
@@ -686,9 +740,10 @@ bool fmt_parse_unit(FmtParser* parser, bool lastExists)
 {
     bool result = false;
 
-    // unit pattern = %<alignment>:<unit>[{extendedOption}]
+    // unit pattern = %<alignment>:<color>:<unit>[{extendedOption}]
     FmtUnitsEnum unit = FMT_UNIT_MAX_E;
     long align = 0;
+    const char* color = NULL;
 
     // deal only with unit without special symbols
     const char* inputString = parser->currentBuff + FMT_UNIT_START_LEN;      
@@ -696,50 +751,122 @@ bool fmt_parse_unit(FmtParser* parser, bool lastExists)
 
     do
     {      
-        // parse alignment
-        char* unitString = NULL;
-        align = strtol(inputString, &unitString, 10);
-        if (errno == ERANGE)
+        // find separators
+        size_t separIndecies[FMT_UNIT_MAX_SEPARS] = { 0 };
+        int actSeparCount = 0;
+        size_t idx;
+        for (idx = 0; idx < inputLen; ++idx)
         {
-            printf("ERROR = alignment overflow \n");
-            break;
+            if (inputString[idx] == FMT_UNIT_SEPAR)
+            {
+                ++actSeparCount;
+                if (actSeparCount > FMT_UNIT_MAX_SEPARS)
+                {
+                    break;
+                }
+                separIndecies[actSeparCount - 1] = idx;
+            }
         }
         
-        size_t unitLen = inputLen - (unitString - inputString) - (lastExists ? 1 : 0);
-        size_t extLen;
-
-        // detect extended option
-        char lastChar = unitString[unitLen - 1];
-        char* extOption;
-        if (lastChar == FMT_EXT_OPT_LAST)
+        // unit is necessary part: check unit and extended option
+        if (actSeparCount >= 0)
         {
-            extOption = strstr(unitString, FMT_EXT_OPT_FIRST_STR);
-            if (!extOption)
+            const char* unitString = actSeparCount ? (inputString + (separIndecies[actSeparCount - 1] + 1)) : inputString;
+            size_t unitLen = inputLen - (unitString - inputString) - (lastExists ? 1 : 0);
+            size_t extLen;
+
+            // detect extended option
+            char lastChar = unitString[unitLen - 1];
+            char* extOption;
+            if (lastChar == FMT_EXT_OPT_LAST)
             {
+                extOption = strstr(unitString, FMT_EXT_OPT_FIRST_STR);
+                if (!extOption)
+                {
+                    break;
+                }
+
+                extLen = unitLen - (extOption - unitString);
+                unitLen = extOption - unitString;
+                memcpy(parser->extOption, (extOption + 1), extLen - 2);
+            }
+            
+            // parse unit
+            unit = fmt_find_unit(unitString, unitLen);
+            if (unit == FMT_UNIT_MAX_E)
+            {
+                printf("ERROR = unknown unit: '%s' len=%zu\n", unitString, unitLen);
                 break;
             }
 
-            extLen = unitLen - (extOption - unitString);
-            unitLen = extOption - unitString;
-            memcpy(parser->extOption, (extOption + 1), extLen - 2);
+            // verify extended option
+            bool isExtended = (lastChar == FMT_EXT_OPT_LAST);
+            isExtended = fmt_verify_extended_option(unit, isExtended, parser->extOption);
+            if (!isExtended)
+            {
+                printf("ERROR = extended option is invalid: '%s'\n", parser->extOption);
+            }    
         }
 
-        // parse unit
-        unit = fmt_find_unit(unitString, unitLen);
-        if (unit == FMT_UNIT_MAX_E)
+        // one separator = alignment is passed
+        if (actSeparCount >= 1)
         {
-            printf("ERROR = unknown unit \n");
-            break;
+            if (separIndecies[0] == 0)
+            {
+                // only separator is given = default alignment is used
+                align = 0;           
+            }
+            else
+            {
+                char* longEnd;
+                align = strtol(inputString, &longEnd, 10);
+                
+                if (errno == ERANGE)
+                {
+                    printf("ERROR = alignment overflow \n");
+                    break;
+                }
+
+                if (*longEnd != FMT_UNIT_SEPAR)
+                {
+                    printf("ERROR = invalid alignment value\n");
+                    break;
+                }
+            }
         }
 
-        // verify extended option
-        bool isExtended = (lastChar == FMT_EXT_OPT_LAST);
-        result = fmt_verify_extended_option(unit, isExtended, parser->extOption);
+        // one separator = alignment is passed
+        if (actSeparCount >= 2)
+        {
+            if (separIndecies[actSeparCount - 1] == (separIndecies[actSeparCount - 2] + 1))
+            {
+                // epmty color is given = default is used
+                color = NULL;
+            }
+            else
+            {
+                const char* colorString = inputString + (separIndecies[actSeparCount - 2] + 1);
+                size_t colorLen = separIndecies[actSeparCount - 1] - (separIndecies[actSeparCount - 2] + 1);
 
+                char* colorBuff = (char*)calloc(1, colorLen + 1);
+                if (!colorBuff)
+                {
+                    break;
+                }
+                memcpy(colorBuff, colorString, colorLen);
+                color = colorBuff;
+            }
+        }
+
+        result = true;
     } while (0);
 
     parser->unit = unit;
     parser->align = align;
+    parser->color = color;
+
+    // debug
+    // printf("unit=%s align=%li color=%scolor\033[m ext=%s\n", fmtUnitMnemonics[unit], align, color, parser->extOption);
 
     return result;
 }
@@ -936,6 +1063,7 @@ void fmt_parser_handle_signal(FmtParser* parser, FmtParserSignalEnum signal)
             {
                 case FMT_PARSE_UNIT:
                 case FMT_PARSE_EXT_OPT:
+
                 {               
                     result = fmt_handle_unit(parser);
                     FMT_ERROR_IF_FALSE(result);
@@ -1041,11 +1169,10 @@ void fmt_parse_format(FmtParser* parser)
 
 
 
-
 int main()
 {
     LogOutputIdEnum output = LOG_OUTPUT_ID_STDOUT_E;
-    const char* fmt = "%-15timestamp{%T.%f}  %-8filename :%8line   ~%-12thread   [ %severity  ]  >>  %message%endl";
+    const char* fmt = "%-15:\033[38;5;26m:timestamp{%T.%f}  %filename  %line   %-12:\033[38;5;166m:thread   [ %severity  ]  >>  %message%endl";
     bool result = logging_set_format(output, fmt);
     
     // debug
@@ -1053,7 +1180,7 @@ int main()
 
     if (result)
     {
-        ERR("...%s...", "MSG");
+        ERR("%s", "something went wrong");
     }
 
     return 0;
