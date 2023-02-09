@@ -153,7 +153,7 @@ typedef struct FmtUnitNodeS
 {
     FmtUnitsEnum unit;
     long alignment;
-    const char* color;
+    char* color;
     char extOption[FMT_BUFF_SIZE];
     char gap[FMT_BUFF_SIZE];
     struct FmtUnitNodeS* next;
@@ -178,7 +178,7 @@ typedef struct FmtParserS
 
     FmtUnitsEnum unit;
     long align;
-    const char* color;
+    char* color;
     char extOption[FMT_BUFF_SIZE];
 } FmtParser;
 
