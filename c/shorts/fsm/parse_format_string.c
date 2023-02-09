@@ -313,6 +313,11 @@ void logging_destroy()
 
         while (curr != NULL)
         {
+            if (curr->color != NULL)
+            {
+                free(curr->color);
+            }
+            
             temp = curr->next;
             free(curr);
             curr = temp;
