@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <time.h>
 #include <stdarg.h>
+#include <sys/timeb.h>
 
 #ifdef __linux__
     #include <unistd.h>
@@ -491,7 +492,7 @@ void log_record_write(LogOutputIdEnum output, const char* record, size_t recordL
     {
         case LOG_OUTPUT_ID_STDOUT_E:
         {
-            write(STDOUT_FILENO, record, recordLen);
+            write(fileno(stdout), record, recordLen);
         }
         break;
 
@@ -609,7 +610,7 @@ bool fmt_push_nodes(void* arg)
     int output = parser->output;
     FmtUnitsEnum unit = parser->unit;
     long align = parser->align;
-    const char* color = parser->color;
+    char* color = parser->color;
     char* extOption = parser->extOption;
     char* gap = parser->accumulateBuff;
     size_t gapLen = strlen(gap);
@@ -748,7 +749,7 @@ bool fmt_parse_unit(FmtParser* parser, bool lastExists)
     // unit pattern = %<alignment>:<color>:<unit>[{extendedOption}]
     FmtUnitsEnum unit = FMT_UNIT_MAX_E;
     long align = 0;
-    const char* color = NULL;
+    char* color = NULL;
 
     // deal only with unit without special symbols
     const char* inputString = parser->currentBuff + FMT_UNIT_START_LEN;      
