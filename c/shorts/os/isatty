@@ -1,0 +1,33 @@
+#include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
+
+#ifdef __linux__
+    #include <unistd.h>
+#else
+    #include <io.h>
+    #define isatty _isatty
+    #define fileno _fileno
+#endif
+
+int main()
+{
+    int redirected = isatty(fileno(stdout));
+    if (redirected == 0)
+    {
+        if (errno == EBADF)
+        {
+            // incorrect fd
+        }
+        else
+        {
+            printf("redirected \n");
+        }
+    }
+    else
+    {
+        printf("not redirected \n");
+    }    
+   
+    return 0;
+}
