@@ -21,7 +21,22 @@
  *        - __VA_ARGS__ leading
  *        - target macros instances in reverse (!) order  >>  one of them will be chosen
  *     - passing __VA_ARGS__ to the instance will be chosen by __SUPPORTING_MACRO__
- *
+ * 
+ * [!] pay attention while working with MSVC compiler, due to specific  __VA_ARGS__ unpacking 
+ *     approach: it considers as __VA_ARGS__ as a SINGLE argument if it makes sence in macro.
+ *     See description: https://learn.microsoft.com/en-us/cpp/preprocessor ("New ... overview")
+ *     To solve the problem:
+ *        - use '/Zc:preprocessor' or '/experimental:preprocessor' compiler option
+ *        - use workaround to expand __VA_ARGS__, e.g.:
+ *              
+ *              // variant 1. MSVC standard behavior
+ *              #define TARGET_MACRO(arg, ...)  #arg                            // try to ignore other args
+ *              #define BASE_MACRO(...) TARGET_MACRO(__VA_ARGS__)               // BASE_MACRO(1, 2) will expand to "1, 2"
+ * 
+ *              // variant 2. Workaround
+ *              #define EXPAND(x) x
+ *              #define TARGET_MACRO(arg, ...)  #arg                            // try to ignore other args
+ *              #define BASE_MACRO(...) EXPAND(TARGET_MACRO(__VA_ARGS__))       // BASE_MACRO(1, 2) will expand to "1"
  * */
 
 #define __SUPPORTING_MACRO__(_0, _1, _2, RESULT, ...) RESULT
