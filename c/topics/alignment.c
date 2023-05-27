@@ -12,9 +12,10 @@
  *      8-byte types  >>  must start on address divisible by 8
  * Sign'ess doesn't affect alignment
  * 
- * [!] terms
- * Padding = process of adding empty bytes to meet alignment requirements 
- * Packing = process of keeping structure with 'as is' size
+ * [!] 
+ * Terms
+ * 		Padding = process of adding empty bytes to meet alignment requirements 
+ * 		Packing = process of keeping structure with 'as is' size
  * 
  * [!]
  * Padding bytes are not guaranteed to be zeroes!
@@ -25,8 +26,10 @@
  * 
  * */
 
+
 #include <stdio.h>
 #include <stdint.h>
+
 
 int main(int argc, char** argv)
 {
@@ -106,15 +109,20 @@ int main(int argc, char** argv)
 	 *   > structure instance has the same address as it's first member = no leading padding bytes
 	 *   > structure must have alignment of it's widest member
 	 * 
-	 * The sequence of this rule is that entire structure
-	 * would be aligned accrding to the alignment requirement 
-	 * of it's first member 
+	 * The sequence of these rules is that entire structure as well as it's first member
+	 * would be aligned according to the alignment requirement of it's widest member. For example:
+	 * 
+	 * 		As it was already said in __1__, char variable has no alignment requirements and might have any address.
+	 * 		But if char variable is the first structure member, it must obey the rule of structure alignment, because
+	 * 		structure itself must be aligned (see __3__). So structure with char as it's first member must has 
+	 * 		address divisible by it's widest member = just like other types on the first member place.
 	 * 
 	 * [!]
-	 * As it was already said in __1__, char variable has no alignment requirements and might have any address.
-	 * But if char variable is the first structure member, it must obey the rule of structure alignment, because
-	 * structure itself must be aligned (see __3__). So structure with char as it's first member must has 
-	 * address divisible by it's widest member = just like other types on the first member place
+	 * Unlike bit fields in structure, 
+	 * 		- non-bit-field members and 
+	 * 		- the units in which bit-fields reside 
+	 * have addresses that INCREASE IN THE ORDER in which they are DECLARED 
+	 * [C11, 6.7.2.1, 15]
 	 * 
 	 * */
 	struct T instance = { 0 };
@@ -127,7 +135,6 @@ int main(int argc, char** argv)
 	size_t offset = OFFSET(T, i);
 	printf("    offset of second member is %zu \n", offset);
 	printf("\n");
-
 
 
 	/* __5__ : Nested structures alignment
