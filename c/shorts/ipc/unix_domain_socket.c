@@ -1,8 +1,12 @@
 /*
-    writing socket:
-        - must be non-blocking to avoid dependency of this service
-        - it's SO_SNDBUF should be set via setsockopt() to limit data
-*/ 
+    Example of client-server unix-domain socket communication.
+    Server: creates socket, accepts connection, reads data in binary format and print to console.
+    Client: creates socket, send data and close socket.
+
+    Example is not optimized and has no real use except giving
+    a flow of how the socket must be created, connected and used
+    to transmit data beetween unix processe.
+*/
 
 
 #define _XOPEN_SOURCE 700
@@ -190,6 +194,7 @@ exit:
     exit(retcode);
 }
 
+
 /* --------------------------------------------------------- */
 /*             S T A T I C   F U N C T I O N S               */
 /* --------------------------------------------------------- */
@@ -278,6 +283,105 @@ static void print_terminating()
     sleep(1);
     printf(".");
     sleep(1);
+
+    return;
+}
+
+
+/* --------------------------------------------------------- */
+/*              C L I E N T   T E M P L A T E                */
+/* --------------------------------------------------------- */
+
+
+static int client_get_sock()
+{
+    static int sock = SOCK_CLOSED;
+
+    int                           rc;
+    int                           slen;
+    static struct sockaddr_un     server_sockaddr = {};
+
+    if (sock == SOCK_CLOSED)
+    {
+        sock = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (sock == SOCK_CLOSED)
+        {
+            perror("socket");
+            goto exit;
+        }
+
+        server_sockaddr.sun_family = AF_UNIX;
+        memcpy(server_sockaddr.sun_path, SOCK_PATH, strlen(SOCK_PATH) + 1);
+        slen = sizeof(server_sockaddr);
+
+        rc = connect(sock, (struct sockaddr *)&server_sockaddr, slen);
+        if (rc == -1)
+        {         
+            perror("connect");
+            close(sock);
+            sock = SOCK_CLOSED;
+            goto exit;
+        }
+
+        int optval = SOCK_BUF_SIZE;
+        socklen_t optlen = sizeof(optval);
+        rc = setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &optval, optlen);
+        if (rc == -1)
+        {
+            perror("setsockopt");
+            close(sock);
+            sock = SOCK_CLOSED;
+            goto exit;
+        }
+    }
+
+exit:
+
+    return sock;
+}
+
+
+static void client_send_data(S* s)
+{    
+    static ssize_t wtotal = sizeof(S);
+
+    int       sock;
+    char     *data = s;
+    ssize_t   wleft = wtotal;
+    ssize_t   wdone = 0;
+    ssize_t   wcurr = 0;
+
+    sock = client_get_sock();    
+    if (sock == -1) 
+    {
+        goto exit;
+    }
+
+    while (wdone < wtotal)
+    {
+        wcurr = write(sock, data, wleft);
+        if (wcurr == -1)
+        {
+            switch (errno)
+            {
+            case EINTR:
+                continue;
+
+            default:
+                perror("write");
+                goto exit;
+            }
+        }
+
+
+    }
+
+exit:
+
+    if (sock != -1)
+    {
+        close(sock);
+    }
 
     return;
 }
